@@ -1,0 +1,49 @@
+https://github.com/moby/moby/issues/25245
+
+#!/bin/bash
+SOURCE=$1
+DEST=$2
+
+SOURCE_ARR=(${SOURCE//:/ })
+DEST_ARR=(${DEST//:/ })
+
+
+if [[ ${#SOURCE_ARR[@]} -eq 2 && ${#DEST_ARR[@]} -eq 1 ]]; then
+        VOL=${SOURCE_ARR[0]}
+        VOL_PATH=${SOURCE_ARR[1]}
+        HOST_PATH=${DEST_ARR[0]}
+
+        docker container create --name docker_volume_cp -v $VOL:/volume hello-world
+        CMD="docker cp docker_volume_cp:/volume/$VOL_PATH $HOST_PATH"
+        #echo "$CMD"
+        $CMD
+        docker rm docker_volume_cp
+
+elif [[ ${#SOURCE_ARR[@]} -eq 1 && ${#DEST_ARR[@]} -eq 2 ]]; then
+        VOL=${DEST_ARR[0]}
+        VOL_PATH=${DEST_ARR[1]}
+        HOST_PATH=${SOURCE_ARR[0]}
+
+        docker container create --name docker_volume_cp -v $VOL:/volume hello-world
+        CMD="docker cp $HOST_PATH docker_volume_cp:/volume/$VOL_PATH"
+        #echo "$CMD"
+        $CMD
+        docker rm docker_volume_cp
+else
+        echo "Usage:"
+        echo " volume --> host: $0 VOLUME:VOL_PATH HOST_PATH"
+        echo " host --> volume: $0 HOST_PATH VOLUME:VOL_PATH"
+fi
+
+
+
+/////////////////////////////////////////////////////////////////////////////////////////
+Explanation:
+	VOLUME is the name of the volume
+	VOL_PATH is the path of the file/directory that needs to be copied, relative to the root of the volume (which could be any unknown location inside the original container)
+	HOST_PATH is the path of the file/directory that needs to be copied, relative to the current host directory
+
+Examples:
+	./docker-volume-cp myvolume:. myvolume_dir (copy all contents of volume "myvolume" into a host directory "myvolume_dir")
+	./docker-volume-cp myvolume_dir/. myvolume_copy:. (copy all contents of host directory "myvolume_dir" into volume "myvolume_copy", which is created if it does not already exist)
+	The above 2 commands virtually create a new volume copy of "myvolume"
